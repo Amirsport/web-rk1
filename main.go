@@ -1,26 +1,52 @@
+/*
+	Билет №18. Форматирование строки "ASDFG" -> "asdfg"
+
+Необходимо написать веб-севрер на GO, декодирующий поданную строку. Сервер должен запускаться по адресу `127.0.0.1:8081`.
+
+У севрера должна быть ручка (handler) `GET /encode`. Эта ручка ожидает, что через query-параметр `?src_string=<передаваемая_строка>` будет передана строка вида `ASDFG`.
+
+При обработке http-запроса должно происходить преобразование вида `"ASDFG" —> "asdfg"
+
+В качестве ответа сервер должен возвращать JSON с единственным полем `result`.
+
+Примерм запроса (curl):
+```
+curl --request GET http://127.0.0.1:8081/encode?src_string=ASDFG
+```
+
+Пример ответа:
+
+	```
+
+{"result":"asdfg"}
+
+	```
+
+Автор: Пелевина Татьяна Владимировна
+*/
 package main
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 type Input struct {
-	FirstNumber  *int    `json:"first_number"`
-	SecondNumber *int    `json:"second_number"`
-	Operator     *string `json:"operator"`
+	FirstString *string `json:"first_string"`
 }
 
 type Output struct {
-	Result float64 `json:"result"`
+	Result string `json:"result"`
 }
 
 // Обработчик HTTP-запроса
-func CalculateHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.WriteHeader(405)
-		w.Write([]byte("method not allowed"))
+func EncodeHandler(w http.ResponseWriter, r *http.Request) {
+
+	srcString := r.URL.Query().Get("src_string")
+	if srcString == "" {
+		http.Error(w, "Отсутвуют нужные параметры", http.StatusBadRequest)
 		return
 	}
 
@@ -34,43 +60,9 @@ func CalculateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if input.FirstNumber == nil {
-		w.WriteHeader(400)
-		w.Write([]byte("first_number is missing"))
-		return
-	}
-	if input.SecondNumber == nil {
-		w.WriteHeader(400)
-		w.Write([]byte("second_number is missing"))
-		return
-	}
-	if input.Operator == nil {
-		w.WriteHeader(400)
-		w.Write([]byte("operator is missing"))
-		return
-	}
-
 	var output Output
 
-	switch *input.Operator {
-	case "+":
-		output.Result = float64(*input.FirstNumber) + float64(*input.SecondNumber)
-	case "-":
-		output.Result = float64(*input.FirstNumber) - float64(*input.SecondNumber)
-	case "*":
-		output.Result = float64(*input.FirstNumber) * float64(*input.SecondNumber)
-	case "/":
-		if *input.SecondNumber == 0 {
-			w.WriteHeader(400)
-			w.Write([]byte("division by zero is not allowed"))
-			return
-		}
-		output.Result = float64(*input.FirstNumber) / float64(*input.SecondNumber)
-	default:
-		w.WriteHeader(400)
-		w.Write([]byte("unknown operator"))
-		return
-	}
+	output.Result = strings.ToLower(srcString)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
@@ -79,8 +71,7 @@ func CalculateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// Регистрируем обработчик для пути "/calculate"
-	http.HandleFunc("/calculate", CalculateHandler)
+	http.HandleFunc("/encode", EncodeHandler)
 
 	// Запускаем веб-сервер на порту 8081
 	fmt.Println("starting server...")
